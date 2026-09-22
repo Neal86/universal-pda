@@ -1,25 +1,50 @@
 {
   "expo": {
-    "name": "universal-pda",
+    "name": "Universal PDA",
     "slug": "universal-pda",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "universalpda",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.neal86.universalpda",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Universal PDA uses the camera to scan operational barcodes."
+      }
     },
     "android": {
+      "package": "com.neal86.universalpda",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Universal PDA to use the camera to scan barcodes.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      "expo-secure-store",
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }
