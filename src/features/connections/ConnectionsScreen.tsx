@@ -3,11 +3,13 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { getConnectorDefinition } from '@/connectors/core/registry';
 import { useSession } from '@/auth/SessionProvider';
+import { useCapabilities } from '@/features/capabilities/CapabilityProvider';
+import { NotificationSettingsCard } from '@/features/notifications/NotificationSettingsCard';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { EmptyState } from '@/ui/EmptyState';
 import { Screen } from '@/ui/Screen';
-import { colors, spacing } from '@/ui/theme';
+import { colors } from '@/ui/theme';
 
 export function ConnectionsScreen() {
   const {
@@ -16,6 +18,8 @@ export function ConnectionsScreen() {
     setActiveConnection,
     removeConnection,
   } = useSession();
+  const { capabilities, error: capabilityError, refresh: refreshCapabilities } =
+    useCapabilities();
 
   function confirmRemove(connectionId: string, name: string) {
     Alert.alert(
@@ -81,10 +85,41 @@ export function ConnectionsScreen() {
         );
       })}
 
+      {activeConnection && capabilities ? (
+        <Card
+          title={capabilities.systemName ?? activeConnection.name}
+          subtitle={[
+            capabilities.organizationName,
+            capabilities.warehouseName,
+          ].filter(Boolean).join(' · ') || 'Connector capabilities loaded'}
+        >
+          <Text style={styles.capabilities}>
+            {capabilities.features.length
+              ? capabilities.features.join(' · ')
+              : 'No feature flags returned'}
+          </Text>
+          <Button
+            title="Refresh capabilities"
+            variant="secondary"
+            onPress={() => void refreshCapabilities()}
+          />
+        </Card>
+      ) : capabilityError ? (
+        <Card title="Capability check failed" subtitle={capabilityError}>
+          <Button
+            title="Retry"
+            variant="secondary"
+            onPress={() => void refreshCapabilities()}
+          />
+        </Card>
+      ) : null}
+
       <Button
         title="Add another system"
         onPress={() => router.push('/connection/new')}
       />
+
+      <NotificationSettingsCard />
 
       <Card
         title="Security"
@@ -105,5 +140,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   activeText: { color: colors.success, fontWeight: '900' },
-  spacer: { height: spacing.sm },
+  capabilities: { color: colors.textMuted, lineHeight: 20 },
 });
