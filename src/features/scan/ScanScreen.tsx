@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NormalizedScanEvent } from '@/device/scanner/core/types';
 import { CameraScanner } from '@/device/scanner/camera/CameraScanner';
 import { KeyboardWedgeCapture } from '@/device/scanner/keyboard-wedge/KeyboardWedgeCapture';
+import { useCapabilities } from '@/features/capabilities/CapabilityProvider';
 import { workflowDefinitions } from '@/workflows/core/registry';
 import { useScanWorkflow } from './useScanWorkflow';
 import { Button } from '@/ui/Button';
@@ -23,13 +24,38 @@ export function ScanScreen() {
     result,
     processScan,
   } = useScanWorkflow();
+  const { supports } = useCapabilities();
 
   const [mode, setMode] = useState<ScanMode>('hardware');
   const [manual, setManual] = useState('');
 
+  const supportedWorkflows = useMemo(
+    () =>
+      workflowDefinitions.filter((definition) =>
+        supports(definition.requiredCapability),
+      ),
+    [supports],
+  );
+
+  const canScan = supportedWorkflows.length > 0;
+
+  useEffect(() => {
+    if (
+      supportedWorkflows.length > 0 &&
+      !supportedWorkflows.some((definition) => definition.id === workflow)
+    ) {
+      const first = supportedWorkflows[0];
+      const timer = setTimeout(() => {
+        setWorkflow(first.id);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [setWorkflow, supportedWorkflows, workflow]);
+
   function submitManual() {
     const value = manual.trim();
-    if (!value) return;
+    if (!value || !canScan) return;
 
     const event: NormalizedScanEvent = {
       value,
@@ -59,22 +85,29 @@ export function ScanScreen() {
         </Text>
       </View>
 
-      <View style={styles.workflowGrid}>
-        {workflowDefinitions.map((definition) => {
-          const active = workflow === definition.id;
-          return (
-            <Pressable
-              key={definition.id}
-              onPress={() => setWorkflow(definition.id)}
-              style={[styles.workflow, active && styles.workflowActive]}
-            >
-              <Text style={[styles.workflowText, active && styles.workflowTextActive]}>
-                {definition.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {canScan ? (
+        <View style={styles.workflowGrid}>
+          {supportedWorkflows.map((definition) => {
+            const active = workflow === definition.id;
+            return (
+              <Pressable
+                key={definition.id}
+                onPress={() => setWorkflow(definition.id)}
+                style={[styles.workflow, active && styles.workflowActive]}
+              >
+                <Text style={[styles.workflowText, active && styles.workflowTextActive]}>
+                  {definition.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : (
+        <Card
+          title="Scanning unavailable"
+          subtitle="The active connector does not advertise any supported scan workflows."
+        />
+      )}
 
       {workflowSessionId ? (
         <Card
@@ -89,29 +122,32 @@ export function ScanScreen() {
           variant={mode === 'hardware' ? 'primary' : 'secondary'}
           onPress={() => setMode('hardware')}
           style={styles.modeButton}
+          disabled={!canScan}
         />
         <Button
           title="Camera"
           variant={mode === 'camera' ? 'primary' : 'secondary'}
           onPress={() => setMode('camera')}
           style={styles.modeButton}
+          disabled={!canScan}
         />
         <Button
           title="Manual"
           variant={mode === 'manual' ? 'primary' : 'secondary'}
           onPress={() => setMode('manual')}
           style={styles.modeButton}
+          disabled={!canScan}
         />
       </View>
 
       {mode === 'hardware' ? (
         <KeyboardWedgeCapture
-          enabled={!processing}
+          enabled={!processing && canScan}
           onScan={(event) => void processScan(event)}
         />
       ) : null}
 
-      {mode === 'camera' ? (
+      {mode === 'camera' && canScan ? (
         <CameraScanner
           enabled={!processing}
           onScan={(event) => void processScan(event)}
@@ -129,12 +165,13 @@ export function ScanScreen() {
             autoCorrect={false}
             returnKeyType="done"
             onSubmitEditing={submitManual}
+            editable={canScan}
           />
           <Button
             title="Submit barcode"
             onPress={submitManual}
             loading={processing}
-            disabled={!manual.trim()}
+            disabled={!manual.trim() || !canScan}
           />
         </View>
       ) : null}
