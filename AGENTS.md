@@ -1,41 +1,92 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+# Universal PDA Engineering Rules
 
-## Expo has changed — do not trust your training data
+Universal PDA is a production-oriented Android, iOS, tablet, and industrial PDA application built with Expo / React Native / TypeScript.
 
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
+## Source of truth
 
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+- GitHub is the only source of truth for project code.
+- Do not use Lucas, a developer workstation, or an uncommitted local copy as the authoritative implementation.
+- All feature work, fixes, refactors, documentation changes, CI changes, and release configuration must be committed to this repository.
+- Use the `develop` branch for active development. Keep `main` release-stable and merge through reviewed pull requests.
 
-## Commands
+## Modular architecture
 
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+Avoid code pollution and regression by separating features aggressively.
+
+- Route files under `src/app/` only compose screens and navigation. They must not contain ERP/WMS vendor logic, persistence implementations, or large workflow implementations.
+- Reusable UI belongs in `src/ui/`.
+- Cross-cutting application services belong in `src/core/`.
+- Authentication and session management belong in `src/auth/`.
+- Local persistence belongs in `src/storage/`.
+- Offline command queue and retry behavior belong in `src/offline/`.
+- Network/API transport belongs in `src/network/`.
+- Barcode, camera, keyboard-wedge, vendor scanner, printer, RFID, NFC, sound, vibration, and device-specific code belong in `src/device/`.
+- Business operations belong in independent modules under `src/workflows/<workflow>/`.
+- ERP/WMS-specific adapters belong only in `src/connectors/<vendor>/`.
+- Shared connector contracts belong in `src/connectors/core/`.
+- Shared pure helpers belong in `src/shared/`.
+
+Do not put unrelated features in the same file. Prefer adding a focused new module over expanding a large existing module.
+
+## Connector isolation
+
+The app must never be tied to NiceC, Odoo, SAP, NetSuite, Dynamics, Shopify, or any other one backend.
+
+The mobile app consumes a normalized connector contract. Vendor-specific object names, authentication, field mapping, and endpoint differences stay inside the corresponding connector/gateway module.
+
+No NiceC-specific logic is allowed in generic scanner, UI, workflow engine, offline queue, or core modules.
+
+## Device isolation
+
+Business workflows must not depend directly on a scanner vendor SDK.
+
+Scanner implementations expose a shared scanner interface. Camera scanning, keyboard-wedge scanning, Android intents, Zebra, Honeywell, Urovo, Chainway, and future hardware integrations remain separate adapters.
+
+## Production requirements
+
+- TypeScript strict mode.
+- No mock operational data in production paths.
+- Never hardcode production URLs, secrets, API keys, tokens, organization IDs, or warehouse IDs.
+- Tokens and secrets must use secure OS storage.
+- Production endpoints must use HTTPS.
+- Destructive actions require explicit UI confirmation and server-side authorization.
+- Offline mutations must use durable operation IDs and be safe to retry.
+- Server-side permissions and audit logs are mandatory for business mutations.
+- User-facing failures must be recoverable and understandable.
+- Barcode workflows need duplicate-scan protection.
+- Warehouse-critical actions should provide sound/haptic feedback where supported.
+- Accessibility and large touch targets are required for handheld/PDA use.
+
+## Testing
+
+Every new business module should have unit tests for its pure logic. Critical connector, offline queue, and workflow state transitions require tests.
+
+Before merging to `main`, CI must run:
 
 ```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
+npm run lint
+npm run typecheck
+npm test
+npx expo-doctor
 ```
 
-Run lint and typecheck before declaring any task done.
+## Expo SDK rules
 
-## Navigation & Routing
+Read the installed Expo SDK version from `package.json` before changing Expo, EAS, or React Native APIs. Verify APIs against the matching official Expo documentation.
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+Use Expo Router for navigation. Routes live under `src/app/`.
 
-## Building with EAS
+Use EAS cloud builds for Android and iOS production artifacts. Native folders generated by Continuous Native Generation must not become the primary place for application logic.
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+## Git conventions
 
-## Rules
+Use conventional commits:
 
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+- `feat:`
+- `fix:`
+- `docs:`
+- `refactor:`
+- `chore:`
+- `test:`
+
+Keep commits scoped and understandable. Do not combine unrelated features in one commit.
