@@ -40,11 +40,11 @@ export function ScanScreen() {
   const canScan = supportedWorkflows.length > 0;
 
   useEffect(() => {
+    const first = supportedWorkflows[0];
     if (
-      supportedWorkflows.length > 0 &&
+      first &&
       !supportedWorkflows.some((definition) => definition.id === workflow)
     ) {
-      const first = supportedWorkflows[0];
       const timer = setTimeout(() => {
         setWorkflow(first.id);
       }, 0);
