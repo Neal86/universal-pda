@@ -7,7 +7,7 @@ import { ConnectionBadge } from '@/ui/ConnectionBadge';
 import { EmptyState } from '@/ui/EmptyState';
 import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
-import { colors, spacing } from '@/ui/theme';
+import { colors } from '@/ui/theme';
 
 export function InventoryScreen() {
   const { items, searched, loading, error, search } = useInventorySearch();

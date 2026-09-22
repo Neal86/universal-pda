@@ -50,7 +50,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [connectionRepository, settingsRepository]);
 
   useEffect(() => {
-    void refresh();
+    const timer = setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [refresh]);
 
   const setActiveConnection = useCallback(

@@ -27,7 +27,10 @@ export function useTasks() {
   }, [activeConnection]);
 
   useEffect(() => {
-    void refresh();
+    const timer = setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [refresh]);
 
   const complete = useCallback(async (taskId: string) => {

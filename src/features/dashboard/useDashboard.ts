@@ -37,7 +37,10 @@ export function useDashboard() {
   }, [activeConnection, queue]);
 
   useEffect(() => {
-    void refresh();
+    const timer = setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [refresh]);
 
   return { dashboard, queuedCount, loading, error, refresh };
