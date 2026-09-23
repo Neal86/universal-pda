@@ -6,6 +6,7 @@ type ConnectionRow = {
   name: string;
   connector_kind: ConnectorKind;
   base_url: string;
+  active_warehouse_id: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -16,6 +17,7 @@ function mapRow(row: ConnectionRow): ConnectionRecord {
     name: row.name,
     connectorKind: row.connector_kind,
     baseUrl: row.base_url,
+    activeWarehouseId: row.active_warehouse_id ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -42,17 +44,19 @@ export class ConnectionRepository {
   async save(connection: ConnectionRecord): Promise<void> {
     await this.db.runAsync(
       `INSERT INTO connections (
-        id, name, connector_kind, base_url, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        id, name, connector_kind, base_url, active_warehouse_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         connector_kind = excluded.connector_kind,
         base_url = excluded.base_url,
+        active_warehouse_id = excluded.active_warehouse_id,
         updated_at = excluded.updated_at`,
       connection.id,
       connection.name,
       connection.connectorKind,
       connection.baseUrl,
+      connection.activeWarehouseId ?? null,
       connection.createdAt,
       connection.updatedAt,
     );
