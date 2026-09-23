@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
+import type { TaskItem } from '@/connectors/core/types';
+import { TaskExceptionModal } from './TaskExceptionModal';
 import { useTasks } from './useTasks';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
@@ -9,7 +11,17 @@ import { Screen } from '@/ui/Screen';
 import { colors, radius, spacing } from '@/ui/theme';
 
 export function TasksScreen() {
-  const { tasks, loading, completingId, error, refresh, complete } = useTasks();
+  const {
+    tasks,
+    loading,
+    completingId,
+    exceptionTaskId,
+    error,
+    refresh,
+    complete,
+    reportException,
+  } = useTasks();
+  const [exceptionTask, setExceptionTask] = useState<TaskItem | null>(null);
 
   async function completeTask(taskId: string) {
     try {
@@ -22,57 +34,118 @@ export function TasksScreen() {
     }
   }
 
+  async function submitException(input: {
+    taskId: string;
+    description: string;
+    severity: string;
+  }) {
+    try {
+      await reportException(input.taskId, input);
+      setExceptionTask(null);
+    } catch (reason) {
+      Alert.alert(
+        'Exception not reported',
+        reason instanceof Error ? reason.message : 'The exception could not be reported.',
+      );
+    }
+  }
+
   return (
-    <Screen>
-      <ConnectionBadge />
+    <>
+      <Screen>
+        <ConnectionBadge />
 
-      <View>
-        <Text style={styles.title}>Open tasks</Text>
-        <Text style={styles.subtitle}>
-          Receive, pick, pack, count, move, and exception work from the active system.
-        </Text>
-      </View>
+        <View>
+          <Text style={styles.title}>Open tasks</Text>
+          <Text style={styles.subtitle}>
+            Receive, pick, pack, count, move, and exception work from the active system.
+          </Text>
+        </View>
 
-      {error ? <Card title="Unable to load tasks" subtitle={error} /> : null}
+        {error ? <Card title="Unable to load tasks" subtitle={error} /> : null}
 
-      {!loading && !error && tasks.length === 0 ? (
-        <EmptyState
-          title="No open tasks"
-          message="The active system returned no open tasks."
-        />
-      ) : null}
-
-      {tasks.map((task) => (
-        <Card
-          key={task.id}
-          title={task.title}
-          subtitle={[task.subtitle, task.priority ? `Priority: ${task.priority}` : '']
-            .filter(Boolean)
-            .join(' · ')}
-        >
-          <View style={styles.meta}>
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>{task.type}</Text>
-            </View>
-            <Text style={styles.status}>{task.status}</Text>
-          </View>
-
-          <Button
-            title="Complete task"
-            onPress={() => void completeTask(task.id)}
-            loading={completingId === task.id}
-            disabled={Boolean(completingId && completingId !== task.id)}
+        {!loading && !error && tasks.length === 0 ? (
+          <EmptyState
+            title="No open tasks"
+            message="The active system returned no open tasks."
           />
-        </Card>
-      ))}
+        ) : null}
 
-      <Button
-        title={loading ? 'Loading…' : 'Refresh tasks'}
-        variant="secondary"
-        onPress={() => void refresh()}
-        disabled={loading}
+        {tasks.map((task) => {
+          const awaitingReview = task.status === 'pending_review';
+          const hasException = task.status === 'exception';
+
+          return (
+            <Card
+              key={task.id}
+              title={task.title}
+              subtitle={[
+                task.subtitle,
+                task.priority ? `Priority: ${task.priority}` : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            >
+              <View style={styles.meta}>
+                <View style={styles.pill}>
+                  <Text style={styles.pillText}>{task.type}</Text>
+                </View>
+                <Text style={styles.status}>{task.status}</Text>
+                {typeof task.progressPercent === 'number' ? (
+                  <Text style={styles.progress}>
+                    {Math.round(task.progressPercent)}%
+                  </Text>
+                ) : null}
+              </View>
+
+              {task.exceptionReason ? (
+                <Text style={styles.exceptionText}>{task.exceptionReason}</Text>
+              ) : null}
+
+              {awaitingReview ? (
+                <View style={styles.reviewBanner}>
+                  <Text style={styles.reviewText}>Completed · awaiting manager review</Text>
+                </View>
+              ) : task.scanRequired !== false ? (
+                <Text style={styles.scanHint}>
+                  Complete this task from the Scan tab so required warehouse scans are recorded.
+                </Text>
+              ) : (
+                <Button
+                  title="Complete task"
+                  onPress={() => void completeTask(task.id)}
+                  loading={completingId === task.id}
+                  disabled={Boolean(completingId && completingId !== task.id)}
+                />
+              )}
+
+              {!awaitingReview && !hasException ? (
+                <Button
+                  title="Report exception"
+                  variant="secondary"
+                  onPress={() => setExceptionTask(task)}
+                  disabled={Boolean(completingId || exceptionTaskId)}
+                />
+              ) : null}
+            </Card>
+          );
+        })}
+
+        <Button
+          title={loading ? 'Loading…' : 'Refresh tasks'}
+          variant="secondary"
+          onPress={() => void refresh()}
+          disabled={loading}
+        />
+      </Screen>
+
+      <TaskExceptionModal
+        task={exceptionTask}
+        submitting={exceptionTaskId === exceptionTask?.id}
+        onClose={() => setExceptionTask(null)}
+        onSubmit={submitException}
       />
-    </Screen>
+    </>
   );
 }
 
@@ -88,4 +161,15 @@ const styles = StyleSheet.create({
   },
   pillText: { color: colors.primary, fontWeight: '900', fontSize: 12 },
   status: { color: colors.textMuted, fontWeight: '700', fontSize: 13 },
+  progress: { marginLeft: 'auto', color: colors.primary, fontWeight: '900' },
+  reviewBanner: {
+    minHeight: 44,
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.successSoft,
+    paddingHorizontal: spacing.md,
+  },
+  reviewText: { color: colors.success, fontWeight: '900' },
+  scanHint: { color: colors.textMuted, lineHeight: 20 },
+  exceptionText: { color: colors.danger, lineHeight: 20, fontWeight: '700' },
 });
