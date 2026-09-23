@@ -8,6 +8,7 @@ export function useTasks() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [exceptionTaskId, setExceptionTaskId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
@@ -38,12 +39,52 @@ export function useTasks() {
 
     setCompletingId(taskId);
     try {
-      await new MobileConnectorClient(activeConnection).completeTask(taskId);
-      setTasks((current) => current.filter((task) => task.id !== taskId));
+      const updated = await new MobileConnectorClient(activeConnection).completeTask(taskId);
+      setTasks((current) => {
+        if (['done', 'completed'].includes(updated.status)) {
+          return current.filter((task) => task.id !== taskId);
+        }
+        return current.map((task) => (task.id === taskId ? updated : task));
+      });
     } finally {
       setCompletingId(null);
     }
   }, [activeConnection]);
 
-  return { tasks, loading, completingId, error, refresh, complete };
+  const reportException = useCallback(
+    async (
+      taskId: string,
+      input: { description: string; severity: string },
+    ) => {
+      if (!activeConnection) return;
+
+      setExceptionTaskId(taskId);
+      try {
+        await new MobileConnectorClient(activeConnection).reportTaskException(
+          taskId,
+          {
+            description: input.description,
+            severity: input.severity,
+            exceptionType: 'other',
+            affectsPerformance: true,
+          },
+        );
+        await refresh();
+      } finally {
+        setExceptionTaskId(null);
+      }
+    },
+    [activeConnection, refresh],
+  );
+
+  return {
+    tasks,
+    loading,
+    completingId,
+    exceptionTaskId,
+    error,
+    refresh,
+    complete,
+    reportException,
+  };
 }
