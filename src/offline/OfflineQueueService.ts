@@ -3,7 +3,10 @@ import type { ScanCommand } from '@/connectors/core/types';
 import { MobileConnectorClient } from '@/connectors/core/MobileConnectorClient';
 import { ApiError } from '@/network/ApiError';
 import { ConnectionRepository } from '@/storage/ConnectionRepository';
-import { OfflineCommandRepository } from '@/storage/OfflineCommandRepository';
+import {
+  OfflineCommandRepository,
+  type OfflineCommandRecord,
+} from '@/storage/OfflineCommandRepository';
 import { MAX_RETRY_ATTEMPTS, nextRetryIso } from './retryPolicy';
 
 const NEVER_RETRY_ISO = '9999-12-31T23:59:59.999Z';
@@ -13,6 +16,34 @@ export type FlushResult = {
   failed: number;
   remaining: number;
 };
+
+export type OfflineQueueItem = OfflineCommandRecord & {
+  needsAttention: boolean;
+  workflow?: string;
+  barcode?: string;
+};
+
+function enrich(item: OfflineCommandRecord): OfflineQueueItem {
+  let workflow: string | undefined;
+  let barcode: string | undefined;
+
+  try {
+    const payload = JSON.parse(item.payloadJson) as Partial<ScanCommand>;
+    workflow = payload.workflow;
+    barcode = payload.barcode;
+  } catch {
+    // Keep malformed queue items visible so the operator can remove them.
+  }
+
+  return {
+    ...item,
+    workflow,
+    barcode,
+    needsAttention:
+      item.nextAttemptAt === NEVER_RETRY_ISO ||
+      item.attempts >= MAX_RETRY_ATTEMPTS,
+  };
+}
 
 export class OfflineQueueService {
   private readonly commands: OfflineCommandRepository;
@@ -38,6 +69,19 @@ export class OfflineQueueService {
 
   count(connectionId?: string): Promise<number> {
     return this.commands.count(connectionId);
+  }
+
+  async list(connectionId: string): Promise<OfflineQueueItem[]> {
+    const items = await this.commands.listForConnection(connectionId);
+    return items.map(enrich);
+  }
+
+  async retryNow(id: string): Promise<void> {
+    await this.commands.retryNow(id);
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.commands.remove(id);
   }
 
   async flushDue(): Promise<FlushResult> {
