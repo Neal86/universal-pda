@@ -4,6 +4,8 @@ import type { NormalizedScanEvent } from '@/device/scanner/core/types';
 import { CameraScanner } from '@/device/scanner/camera/CameraScanner';
 import { KeyboardWedgeCapture } from '@/device/scanner/keyboard-wedge/KeyboardWedgeCapture';
 import { useCapabilities } from '@/features/capabilities/CapabilityProvider';
+import { CountLineEditor } from '@/features/count/CountLineEditor';
+import { ReturnRestockPanel } from '@/features/returns/ReturnRestockPanel';
 import { workflowDefinitions } from '@/workflows/core/registry';
 import { useScanWorkflow } from './useScanWorkflow';
 import { Button } from '@/ui/Button';
@@ -65,6 +67,10 @@ export function ScanScreen() {
 
     setManual('');
     void processScan(event);
+  }
+
+  function resetCurrentWorkflow() {
+    setWorkflow(workflow);
   }
 
   const resultStyle =
@@ -191,6 +197,16 @@ export function ScanScreen() {
           ) : null}
         </View>
       ) : null}
+
+      <CountLineEditor
+        result={result}
+        onSubmitted={resetCurrentWorkflow}
+      />
+
+      <ReturnRestockPanel
+        result={result}
+        onCompleted={resetCurrentWorkflow}
+      />
 
       {processing ? (
         <Card title="Processing scan" subtitle="Checking the active business system…" />
