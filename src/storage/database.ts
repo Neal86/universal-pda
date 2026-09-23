@@ -1,25 +1,24 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
   const versionRow = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const currentVersion = versionRow?.user_version ?? 0;
 
-  if (currentVersion >= DATABASE_VERSION) {
-    return;
-  }
+  await db.execAsync(`
+    PRAGMA journal_mode = WAL;
+    PRAGMA foreign_keys = ON;
+  `);
 
   if (currentVersion === 0) {
     await db.execAsync(`
-      PRAGMA journal_mode = WAL;
-      PRAGMA foreign_keys = ON;
-
       CREATE TABLE IF NOT EXISTS connections (
         id TEXT PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,
         connector_kind TEXT NOT NULL,
         base_url TEXT NOT NULL,
+        active_warehouse_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -47,7 +46,13 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_offline_commands_connection
         ON offline_commands(connection_id);
     `);
+  } else if (currentVersion < 2) {
+    await db.execAsync(`
+      ALTER TABLE connections ADD COLUMN active_warehouse_id INTEGER;
+    `);
   }
 
-  await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+  if (currentVersion < DATABASE_VERSION) {
+    await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+  }
 }
