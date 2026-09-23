@@ -67,6 +67,21 @@ export class OfflineCommandRepository {
     return rows.map(mapRow);
   }
 
+  async listForConnection(
+    connectionId: string,
+    limit = 100,
+  ): Promise<OfflineCommandRecord[]> {
+    const rows = await this.db.getAllAsync<OfflineCommandRow>(
+      `SELECT * FROM offline_commands
+       WHERE connection_id = ?
+       ORDER BY created_at ASC
+       LIMIT ?`,
+      connectionId,
+      limit,
+    );
+    return rows.map(mapRow);
+  }
+
   async count(connectionId?: string): Promise<number> {
     if (connectionId) {
       const row = await this.db.getFirstAsync<{ count: number }>(
@@ -95,6 +110,16 @@ export class OfflineCommandRepository {
       attempts,
       nextAttemptAt,
       lastError,
+      id,
+    );
+  }
+
+  async retryNow(id: string): Promise<void> {
+    await this.db.runAsync(
+      `UPDATE offline_commands
+       SET attempts = 0, next_attempt_at = ?, last_error = NULL
+       WHERE id = ?`,
+      new Date().toISOString(),
       id,
     );
   }
