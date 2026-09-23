@@ -56,4 +56,6 @@ npx expo-doctor
 - Android/iOS production identifiers
 - EAS build profiles
 
-See `docs/ARCHITECTURE.md`, `docs/CONNECTOR_PROTOCOL.md`, and `docs/RELEASE.md`.
+Product requirements live in `docs/PRD.md` and must stay synchronized with implementation changes.
+
+See `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/CONNECTOR_PROTOCOL.md`, and `docs/RELEASE.md`.

@@ -57,6 +57,14 @@ Scanner implementations expose a shared scanner interface. Camera scanning, keyb
 - Warehouse-critical actions should provide sound/haptic feedback where supported.
 - Accessibility and large touch targets are required for handheld/PDA use.
 
+## PRD synchronization
+
+`docs/PRD.md` is the product definition for Universal PDA.
+
+Any change to user flows, navigation, workflows, connector contracts, device capabilities, offline behavior, permissions, security behavior, store-facing behavior, or release requirements must update `docs/PRD.md` in the same task.
+
+If code and PRD disagree, do not silently accept the mismatch. Either update the implementation to match the PRD, or intentionally update the PRD before changing behavior.
+
 ## Testing
 
 Every new business module should have unit tests for its pure logic. Critical connector, offline queue, and workflow state transitions require tests.
