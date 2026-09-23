@@ -5,4 +5,5 @@ export const odooConnector: ConnectorDefinition = {
   label: 'Odoo',
   description: 'Odoo operations through a server-side Universal PDA adapter.',
   protocolVersion: 1,
+  authMode: 'token',
 };

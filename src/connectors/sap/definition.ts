@@ -5,4 +5,5 @@ export const sapConnector: ConnectorDefinition = {
   label: 'SAP',
   description: 'SAP operations through a server-side Universal PDA adapter.',
   protocolVersion: 1,
+  authMode: 'token',
 };

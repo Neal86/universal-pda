@@ -5,4 +5,5 @@ export const customRestConnector: ConnectorDefinition = {
   label: 'Custom Gateway',
   description: 'Any backend implementing Universal PDA Connector Protocol v1.',
   protocolVersion: 1,
+  authMode: 'token',
 };

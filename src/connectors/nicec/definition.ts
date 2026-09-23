@@ -5,4 +5,5 @@ export const nicecConnector: ConnectorDefinition = {
   label: 'NiceC WMS',
   description: 'NiceC warehouse operations through the Universal PDA mobile protocol.',
   protocolVersion: 1,
+  authMode: 'credentials',
 };

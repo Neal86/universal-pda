@@ -10,6 +10,7 @@ const universalConnector: ConnectorDefinition = {
   label: 'Universal Gateway',
   description: 'Vendor-neutral Universal PDA Connector Protocol v1 endpoint.',
   protocolVersion: 1,
+  authMode: 'token',
 };
 
 export const connectorDefinitions: readonly ConnectorDefinition[] = [
