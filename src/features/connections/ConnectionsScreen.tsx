@@ -5,6 +5,7 @@ import { getConnectorDefinition } from '@/connectors/core/registry';
 import { useSession } from '@/auth/SessionProvider';
 import { useCapabilities } from '@/features/capabilities/CapabilityProvider';
 import { NotificationSettingsCard } from '@/features/notifications/NotificationSettingsCard';
+import { WarehouseSwitcherCard } from '@/features/warehouses/WarehouseSwitcherCard';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { EmptyState } from '@/ui/EmptyState';
@@ -18,8 +19,12 @@ export function ConnectionsScreen() {
     setActiveConnection,
     removeConnection,
   } = useSession();
-  const { capabilities, error: capabilityError, refresh: refreshCapabilities } =
-    useCapabilities();
+  const {
+    capabilities,
+    error: capabilityError,
+    refresh: refreshCapabilities,
+    supports,
+  } = useCapabilities();
 
   function confirmRemove(connectionId: string, name: string) {
     Alert.alert(
@@ -114,16 +119,20 @@ export function ConnectionsScreen() {
         </Card>
       ) : null}
 
+      {activeConnection && supports('warehouse-switching') ? (
+        <WarehouseSwitcherCard onChanged={refreshCapabilities} />
+      ) : null}
+
       <Button
         title="Add another system"
         onPress={() => router.push('/connection/new')}
       />
 
-      <NotificationSettingsCard />
+      {supports('notifications') ? <NotificationSettingsCard /> : null}
 
       <Card
         title="Security"
-        subtitle="Scoped mobile tokens are stored in OS secure storage. Vendor administrator passwords are not stored in normal app data."
+        subtitle="Scoped mobile tokens are stored in OS secure storage. NiceC passwords are used only during sign-in and are never persisted."
       />
     </Screen>
   );
