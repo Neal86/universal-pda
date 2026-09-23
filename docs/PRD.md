@@ -175,18 +175,32 @@ Connect your business system
 + Add Connection
 ```
 
-连接字段：
+通用 Token Connector 字段：
 
 - Connection Name
 - Connector Type
 - Gateway URL
 - Scoped Mobile Access Token
 
-保存前必须调用：
+NiceC WMS 使用凭据换 Token：
+
+```text
+Connection Name
+Gateway URL
+NiceC Username
+NiceC Password
+→ POST /mobile/v1/auth/login
+→ Scoped Mobile Token
+→ Password immediately discarded
+```
+
+NiceC 密码只允许存在于登录表单内存中，严禁写入 SQLite、SecureStore、日志或 Offline Queue。
+
+如果账号只有一个可访问仓库，系统自动选择；如果有多个仓库，连接保存前必须让用户选择 Active Warehouse。仓库切换通过 `POST /mobile/v1/warehouse-context` 获取包含新仓库上下文的 Token。
+
+所有连接保存前必须成功读取：
 
 `GET /mobile/v1/capabilities`
-
-只有连接测试成功才允许保存。
 
 生产环境要求 HTTPS。localhost 开发环境可例外。
 
@@ -200,12 +214,19 @@ Connect your business system
 
 - Access Token
 - Capability
-- Active Workspace
+- Active Workspace / Active Warehouse
 - Offline Queue
 - Connector Metadata
 - 权限上下文
 
-用户可以切换 Active Connection。
+用户可以切换 Active Connection；支持仓库切换的 Connector 还可以在同一个 Connection 内切换 Active Warehouse。
+
+切换仓库后必须：
+
+- 由服务器验证 Warehouse Scope
+- 刷新带仓库上下文的 Token
+- 更新本地 Active Warehouse Metadata
+- 刷新 Capability / Dashboard / Tasks / Inventory
 
 移除 Connection 时必须删除：
 
@@ -548,18 +569,22 @@ Scan Shipment
 流程：
 
 ```text
-Scan Product
+Scan Task / Transfer
 → Scan Source Bin
-→ Quantity
+→ Scan Product
+→ Quantity Validation
 → Scan Destination Bin
 → Confirm Move
 ```
+
+Source Bin 和 Destination Bin 必须与任务 / Transfer 的真实库位一致，不能只接受任意有效库位。
 
 服务器必须验证：
 
 - Available Inventory
 - Permission
-- Location Validity
+- Source Location
+- Destination Location
 - Inventory Lock
 - Quantity
 
@@ -576,13 +601,17 @@ Scan Product
 流程：
 
 ```text
-Scan Location
-→ Scan SKU
-→ Enter Count
+Scan Count Task
+→ Scan SKU / Lot / Serial
+→ App increments scan quantity
+→ Operator can explicitly correct Counted Quantity, including zero
 → Compare System Quantity
 → Difference
+→ Submit Review
 → Supervisor Approval if required
 ```
+
+盘点不能把“没有扫到”自动当成零库存。零数量必须由操作员明确输入。
 
 ---
 
@@ -591,12 +620,18 @@ Scan Location
 流程：
 
 ```text
-Scan Return / Order
+Scan Return / Return Action
 → Scan Product
-→ Condition
-→ Reason
+→ Condition / Classification
+→ Confirm Received Quantity
+→ Confirm Good Quantity
+→ Confirm Damaged / Defective Quantity
 → Disposition
+→ Scan Putaway Destination
+→ Complete / Review
 ```
+
+Return-inbound 禁止默认“全部良品”。操作员必须明确确认数量分类。
 
 Condition：
 
@@ -615,6 +650,16 @@ Disposition：
 - Dispose
 - Return to Vendor
 
+Restock 流程必须支持：
+
+- Received Qty
+- Good Qty
+- Defective Qty
+- Shortage / Excess
+- Good Inventory Destination
+- Defective Inventory Destination
+- Lot / Batch（需要时）
+
 ---
 
 ## 23. Offline Mode
@@ -631,6 +676,15 @@ Create operationId
 → Retry
 → Success
 → Remove Queue Item
+```
+
+不可重试错误或达到最大自动重试次数：
+
+```text
+Needs Attention
+→ Show Last Error
+→ Operator chooses Retry or Discard
+→ Discard requires explicit confirmation
 ```
 
 Queue 必须持久化：
@@ -690,17 +744,36 @@ Queue 禁止保存：
 
 ## 26. Connector Protocol v1
 
-V1 标准接口：
+V1 核心接口：
 
 ```text
+POST /mobile/v1/auth/login                  # credential connectors
+GET  /mobile/v1/warehouses
+POST /mobile/v1/warehouse-context
+
 GET  /mobile/v1/capabilities
 GET  /mobile/v1/dashboard
+
 GET  /mobile/v1/tasks
 POST /mobile/v1/tasks/:id/complete
+POST /mobile/v1/tasks/:id/exception
+POST /mobile/v1/tasks/:id/exception/resolve
+
 GET  /mobile/v1/inventory/search
 POST /mobile/v1/scan
+
+POST /mobile/v1/counts/:id/lines/:lineId
+POST /mobile/v1/counts/:id/approve
+
+GET  /mobile/v1/returns/:id
+POST /mobile/v1/returns/:id/count
+POST /mobile/v1/returns/:id/putaway
+POST /mobile/v1/returns/:id/approve
+
 POST /mobile/v1/devices/push-token
 ```
+
+所有 mutation 必须由服务器实施 RBAC / Warehouse Scope / Audit；可重试业务 mutation 应使用 `Idempotency-Key`。
 
 详细协议见：
 
@@ -716,21 +789,28 @@ NiceC 是第一个真实 Connector。
 
 - 不在通用 Core 中加入 NiceC 专属字段。
 - NiceC 数据通过 Gateway 转换成 Universal PDA Protocol。
-- NiceC Connector 必须支持真实数据，不使用 mock。
-- V1 至少完成：
+- NiceC Connector 使用真实 Odoo 18 数据和 WMS Service，不使用 mock。
+- NiceC 登录使用用户名 / 密码换取 scoped mobile JWT；密码不保存。
+- Warehouse Scope 必须服务端校验。
+- Mobile request 标记 `X-WMS-Client: mobile` 进入现有审计链路。
+- Mutation 使用现有 Gateway Idempotency。
+- V1 实现：
+  - credential login
+  - warehouse list / switch
   - capabilities
   - dashboard
-  - tasks
+  - tasks / exceptions
   - inventory search
   - identify
   - receive
   - putaway
-  - pick
+  - pick（含 Source Bin 与 Destination / Tote）
   - pack
   - ship
-  - count
-  - move
-  - return
+  - count（含显式数量修正与 review）
+  - move（含 Source / Destination Bin）
+  - return（含 good / defective 分类和 putaway）
+  - push device registration
 
 ---
 
@@ -1085,18 +1165,21 @@ Route 文件只负责 Feature 组装。
 
 ## 40. 剩余上线关键路径
 
-按优先顺序：
+当前代码层已进入真实 NiceC Connector / Workflow 阶段。最终上线关键路径：
 
 ```text
-真实 NiceC Connector
-→ 完整真实 Workflow API
-→ 真机 Android / iPhone / PDA 测试
-→ EAS Project / Signing
+NiceC Gateway + Odoo Module 部署 / 升级
+→ 真实 NiceC 数据端到端 Smoke Test
+→ 真机 Android / iPhone / Industrial PDA 测试
+→ EAS Project Link / Signing
+→ TestFlight / Play Internal Testing
 → Store Assets & Metadata
 → Release Candidate
 → main
 → App Store / Google Play
 ```
+
+不能用模拟测试替代真实仓库验收。App Store / Google Play 签名、开发者账号和真机硬件属于发布外部依赖。
 
 ---
 
