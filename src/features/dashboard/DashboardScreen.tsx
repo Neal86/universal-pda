@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useDashboard } from './useDashboard';
+import { OfflineQueueCard } from '@/features/offline/OfflineQueueCard';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { ConnectionBadge } from '@/ui/ConnectionBadge';
@@ -9,11 +10,12 @@ import { Screen } from '@/ui/Screen';
 import { colors, spacing } from '@/ui/theme';
 
 export function DashboardScreen() {
-  const { dashboard, queuedCount, loading, error, refresh } = useDashboard();
+  const { dashboard, loading, error, refresh } = useDashboard();
 
   return (
     <Screen>
       <ConnectionBadge />
+      <OfflineQueueCard onChanged={refresh} />
 
       <View>
         <Text style={styles.title}>{dashboard?.title ?? 'Operations'}</Text>
@@ -21,19 +23,6 @@ export function DashboardScreen() {
           {dashboard?.subtitle ?? 'Live operational data from the active system.'}
         </Text>
       </View>
-
-      {queuedCount > 0 ? (
-        <Card
-          title="Offline queue"
-          subtitle={`${queuedCount} operation${queuedCount === 1 ? '' : 's'} waiting to sync.`}
-        >
-          <Button
-            title="Retry sync"
-            variant="secondary"
-            onPress={() => void refresh()}
-          />
-        </Card>
-      ) : null}
 
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} />
