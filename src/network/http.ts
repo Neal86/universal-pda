@@ -12,6 +12,7 @@ type JsonRequestOptions = {
   query?: Record<string, string | number | boolean | undefined>;
   timeoutMs?: number;
   idempotencyKey?: string;
+  headers?: Record<string, string>;
 };
 
 async function parseResponse(response: Response): Promise<unknown> {
@@ -27,6 +28,32 @@ async function parseResponse(response: Response): Promise<unknown> {
   }
 }
 
+function messageFromPayload(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+
+  if (
+    'message' in payload &&
+    typeof (payload as { message?: unknown }).message === 'string'
+  ) {
+    return (payload as { message: string }).message;
+  }
+
+  if ('error' in payload) {
+    const error = (payload as { error?: unknown }).error;
+    if (typeof error === 'string') return error;
+    if (
+      error &&
+      typeof error === 'object' &&
+      'message' in error &&
+      typeof (error as { message?: unknown }).message === 'string'
+    ) {
+      return (error as { message: string }).message;
+    }
+  }
+
+  return null;
+}
+
 export async function requestJson<T>({
   baseUrl,
   path,
@@ -36,6 +63,7 @@ export async function requestJson<T>({
   query,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   idempotencyKey,
+  headers,
 }: JsonRequestOptions): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -46,24 +74,22 @@ export async function requestJson<T>({
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
+        'X-WMS-Client': 'mobile',
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+        ...(headers ?? {}),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
 
     const payload = await parseResponse(response);
     if (!response.ok) {
-      const message =
-        typeof payload === 'object' &&
-        payload !== null &&
-        'message' in payload &&
-        typeof (payload as { message?: unknown }).message === 'string'
-          ? (payload as { message: string }).message
-          : `Request failed with HTTP ${response.status}.`;
-
-      throw new ApiError(message, response.status, isRetriableStatus(response.status));
+      throw new ApiError(
+        messageFromPayload(payload) ?? `Request failed with HTTP ${response.status}.`,
+        response.status,
+        isRetriableStatus(response.status),
+      );
     }
 
     return payload as T;
