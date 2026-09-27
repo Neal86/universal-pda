@@ -3,6 +3,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import type { TaskItem } from '@/connectors/core/types';
 import { TaskExceptionModal } from './TaskExceptionModal';
 import { useTasks } from './useTasks';
+import { useCapabilities } from '@/features/capabilities/CapabilityProvider';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { ConnectionBadge } from '@/ui/ConnectionBadge';
@@ -16,11 +17,17 @@ export function TasksScreen() {
     loading,
     completingId,
     exceptionTaskId,
+    reviewingId,
     error,
     refresh,
     complete,
+    review,
     reportException,
   } = useTasks();
+  const { capabilities } = useCapabilities();
+  const isManager = ['SUPER_ADMIN', 'ADMIN', 'WAREHOUSE_MANAGER'].includes(
+    String(capabilities?.userRole || ''),
+  );
   const [exceptionTask, setExceptionTask] = useState<TaskItem | null>(null);
 
   async function completeTask(taskId: string) {
@@ -30,6 +37,17 @@ export function TasksScreen() {
       Alert.alert(
         'Task not completed',
         reason instanceof Error ? reason.message : 'The task update failed.',
+      );
+    }
+  }
+
+  async function reviewTask(taskId: string, approved: boolean) {
+    try {
+      await review(taskId, approved);
+    } catch (reason) {
+      Alert.alert(
+        'Task review failed',
+        reason instanceof Error ? reason.message : 'The task review could not be saved.',
       );
     }
   }
@@ -103,9 +121,29 @@ export function TasksScreen() {
               ) : null}
 
               {awaitingReview ? (
-                <View style={styles.reviewBanner}>
-                  <Text style={styles.reviewText}>Completed · awaiting manager review</Text>
-                </View>
+                <>
+                  <View style={styles.reviewBanner}>
+                    <Text style={styles.reviewText}>Completed · awaiting manager review</Text>
+                  </View>
+                  {isManager ? (
+                    <View style={styles.reviewActions}>
+                      <Button
+                        title="Approve"
+                        onPress={() => void reviewTask(task.id, true)}
+                        loading={reviewingId === task.id}
+                        disabled={Boolean(reviewingId && reviewingId !== task.id)}
+                        style={styles.reviewAction}
+                      />
+                      <Button
+                        title="Send back"
+                        variant="secondary"
+                        onPress={() => void reviewTask(task.id, false)}
+                        disabled={Boolean(reviewingId)}
+                        style={styles.reviewAction}
+                      />
+                    </View>
+                  ) : null}
+                </>
               ) : task.scanRequired !== false ? (
                 <Text style={styles.scanHint}>
                   Complete this task from the Scan tab so required warehouse scans are recorded.
@@ -171,6 +209,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   reviewText: { color: colors.success, fontWeight: '900' },
+  reviewActions: { flexDirection: 'row', gap: spacing.sm },
+  reviewAction: { flex: 1 },
   scanHint: { color: colors.textMuted, lineHeight: 20 },
   exceptionText: { color: colors.danger, lineHeight: 20, fontWeight: '700' },
 });

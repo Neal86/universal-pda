@@ -5,7 +5,9 @@ import { CameraScanner } from '@/device/scanner/camera/CameraScanner';
 import { KeyboardWedgeCapture } from '@/device/scanner/keyboard-wedge/KeyboardWedgeCapture';
 import { useCapabilities } from '@/features/capabilities/CapabilityProvider';
 import { CountLineEditor } from '@/features/count/CountLineEditor';
+import { CountReviewCard } from '@/features/count/CountReviewCard';
 import { ReturnRestockPanel } from '@/features/returns/ReturnRestockPanel';
+import { ReturnReviewCard } from '@/features/returns/ReturnReviewCard';
 import { workflowDefinitions } from '@/workflows/core/registry';
 import { useScanWorkflow } from './useScanWorkflow';
 import { Button } from '@/ui/Button';
@@ -204,9 +206,19 @@ export function ScanScreen() {
         onSubmitted={resetCurrentWorkflow}
       />
 
+      <CountReviewCard
+        result={result}
+        onApproved={resetCurrentWorkflow}
+      />
+
       <ReturnRestockPanel
         result={result}
         onCompleted={resetCurrentWorkflow}
+      />
+
+      <ReturnReviewCard
+        result={result}
+        onApproved={resetCurrentWorkflow}
       />
 
       {processing ? (
