@@ -99,6 +99,20 @@ export class MobileConnectorClient {
     });
   }
 
+  async reviewTask(
+    taskId: string,
+    approved = true,
+    note = '',
+  ): Promise<TaskItem> {
+    return requestJson<TaskItem>({
+      baseUrl: this.connection.baseUrl,
+      path: `/mobile/v1/tasks/${encodeURIComponent(taskId)}/review`,
+      token: await this.token(),
+      method: 'POST',
+      body: { approved, note },
+    });
+  }
+
   async reportTaskException(
     taskId: string,
     input: {

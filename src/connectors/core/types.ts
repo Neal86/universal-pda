@@ -19,6 +19,7 @@ export type CapabilitySet = {
   systemName?: string;
   organizationName?: string;
   warehouseName?: string;
+  userRole?: string;
   features: string[];
 };
 

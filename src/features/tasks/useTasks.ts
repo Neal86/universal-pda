@@ -9,6 +9,7 @@ export function useTasks() {
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [exceptionTaskId, setExceptionTaskId] = useState<string | null>(null);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
@@ -51,6 +52,26 @@ export function useTasks() {
     }
   }, [activeConnection]);
 
+  const review = useCallback(async (taskId: string, approved = true) => {
+    if (!activeConnection) return;
+
+    setReviewingId(taskId);
+    try {
+      const updated = await new MobileConnectorClient(activeConnection).reviewTask(
+        taskId,
+        approved,
+      );
+      setTasks((current) => {
+        if (['done', 'completed'].includes(updated.status)) {
+          return current.filter((task) => task.id !== taskId);
+        }
+        return current.map((task) => (task.id === taskId ? updated : task));
+      });
+    } finally {
+      setReviewingId(null);
+    }
+  }, [activeConnection]);
+
   const reportException = useCallback(
     async (
       taskId: string,
@@ -82,9 +103,11 @@ export function useTasks() {
     loading,
     completingId,
     exceptionTaskId,
+    reviewingId,
     error,
     refresh,
     complete,
+    review,
     reportException,
   };
 }
