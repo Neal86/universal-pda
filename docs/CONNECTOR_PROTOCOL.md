@@ -71,6 +71,7 @@ The server validates warehouse scope and returns a refreshed token containing th
   "systemName": "Example WMS",
   "organizationName": "Example Inc",
   "warehouseName": "Los Angeles",
+  "userRole": "WAREHOUSE_MANAGER",
   "features": [
     "dashboard",
     "tasks",
@@ -117,6 +118,17 @@ Production payloads must come from real business data, not mock fixtures.
 `GET /mobile/v1/tasks?status=open`
 
 `POST /mobile/v1/tasks/:id/complete`
+
+`POST /mobile/v1/tasks/:id/review`
+
+```json
+{
+  "approved": true,
+  "note": "Verified"
+}
+```
+
+Task review is manager-only. Rejected tasks return to the assigned work queue.
 
 `POST /mobile/v1/tasks/:id/exception`
 
@@ -193,7 +205,7 @@ Example response:
 }
 ```
 
-The server decides the next scan step and must reject wrong products, wrong source bins, wrong destination bins, over-scans, invalid lots/serials, and invalid workflow state.
+The server decides the next scan step and must reject wrong products, wrong source bins, wrong destination bins, over-scans, invalid lots/serials, and invalid workflow state. Packing must not proceed while the associated pick task is awaiting review. Shipping must require the authoritative outbound state to be ready-to-ship, including weighing when configured.
 
 ## Count quantity correction
 
@@ -207,7 +219,7 @@ Scan counting may increment one unit at a time, but the operator can explicitly 
 }
 ```
 
-Zero is a valid explicit count. The client must not infer zero merely because an item was not scanned.
+Zero is a valid explicit count. The client must not infer zero merely because an item was not scanned. Count-line corrections remain allowed while the count is in review, until a manager approves and posts the adjustment.
 
 Manager approval:
 
@@ -265,7 +277,9 @@ Push tokens are device routing identifiers and should be scoped to the authentic
 
 ## Offline and retries
 
-The app can persist a failed mutation locally without persisting authorization headers.
+The app can persist a failed mutation locally without persisting authorization headers. V1 only queues replay-safe scans: commands that already have a server-issued `workflowSessionId`, plus explicitly one-step replay-safe operations such as Ship. Starting a new multi-step workflow or Identify requires connectivity because the next authoritative state comes from the server.
+
+After a workflow scan is queued offline, the client pauses further scanning for that workflow. Once connectivity returns and the queue syncs, the operator reselects the workflow and resumes from server-authoritative state.
 
 When automatic retries are exhausted or an error is non-retriable, the operation becomes **Needs Attention**. The operator can:
 
