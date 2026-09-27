@@ -49,13 +49,23 @@ export function CountLineEditor({ result, onSubmitted }: Props) {
   }
 
   async function save() {
-    if (countedQty === undefined || saving) return;
+    if (
+      countedQty === undefined ||
+      saving ||
+      !activeConnection ||
+      !countId ||
+      !lineId
+    ) return;
+
+    const connection = activeConnection;
+    const resolvedCountId = countId;
+    const resolvedLineId = lineId;
 
     setSaving(true);
     try {
-      const updated = await new MobileConnectorClient(activeConnection).updateCountLine(
-        countId,
-        lineId,
+      const updated = await new MobileConnectorClient(connection).updateCountLine(
+        resolvedCountId,
+        resolvedLineId,
         countedQty,
       );
       setSavedDifference(updated.differenceQty);
