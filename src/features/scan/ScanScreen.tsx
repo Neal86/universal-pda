@@ -25,6 +25,7 @@ export function ScanScreen() {
     setWorkflow,
     workflowSessionId,
     processing,
+    offlinePending,
     result,
     processScan,
   } = useScanWorkflow();
@@ -59,7 +60,7 @@ export function ScanScreen() {
 
   function submitManual() {
     const value = manual.trim();
-    if (!value || !canScan) return;
+    if (!value || !canScan || offlinePending) return;
 
     const event: NormalizedScanEvent = {
       value,
@@ -124,6 +125,13 @@ export function ScanScreen() {
         />
       ) : null}
 
+      {offlinePending ? (
+        <Card
+          title="Offline operation queued"
+          subtitle="Pause scanning until the queue syncs. After reconnecting, reselect this workflow and resume from the server-authoritative state."
+        />
+      ) : null}
+
       <View style={styles.modeRow}>
         <Button
           title="PDA"
@@ -150,14 +158,14 @@ export function ScanScreen() {
 
       {mode === 'hardware' ? (
         <KeyboardWedgeCapture
-          enabled={!processing && canScan}
+          enabled={!processing && canScan && !offlinePending}
           onScan={(event) => void processScan(event)}
         />
       ) : null}
 
       {mode === 'camera' && canScan ? (
         <CameraScanner
-          enabled={!processing}
+          enabled={!processing && !offlinePending}
           onScan={(event) => void processScan(event)}
         />
       ) : null}
@@ -173,13 +181,13 @@ export function ScanScreen() {
             autoCorrect={false}
             returnKeyType="done"
             onSubmitEditing={submitManual}
-            editable={canScan}
+            editable={canScan && !offlinePending}
           />
           <Button
             title="Submit barcode"
             onPress={submitManual}
             loading={processing}
-            disabled={!manual.trim() || !canScan}
+            disabled={!manual.trim() || !canScan || offlinePending}
           />
         </View>
       ) : null}

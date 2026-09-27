@@ -24,18 +24,20 @@ export function useScanWorkflow() {
   const [workflow, setWorkflowState] = useState<WorkflowKind>('identify');
   const [workflowSessionId, setWorkflowSessionId] = useState<string>();
   const [processing, setProcessing] = useState(false);
+  const [offlinePending, setOfflinePending] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const lastScan = useRef<{ value: string; at: number } | null>(null);
 
   const setWorkflow = useCallback((next: WorkflowKind) => {
     setWorkflowState(next);
     setWorkflowSessionId(undefined);
+    setOfflinePending(false);
     setResult(null);
     lastScan.current = null;
   }, []);
 
   const processScan = useCallback(async (event: NormalizedScanEvent) => {
-    if (!activeConnection || processing) return;
+    if (!activeConnection || processing || offlinePending) return;
 
     const barcode = event.value.trim();
     if (!barcode) return;
@@ -68,10 +70,21 @@ export function useScanWorkflow() {
         network.isConnected === false || network.isInternetReachable === false;
 
       if (offline) {
+        const replaySafe = Boolean(command.workflowSessionId) || command.workflow === 'ship';
+        if (!replaySafe) {
+          setResult({
+            title: barcode,
+            message: 'A connection is required to start this workflow. Nothing was queued.',
+            severity: 'warning',
+          });
+          await warningFeedback();
+          return;
+        }
         await queue.enqueueScan(activeConnection.id, command);
+        setOfflinePending(true);
         setResult({
           title: barcode,
-          message: 'Saved offline. This operation will sync when connectivity returns.',
+          message: 'Saved offline. Stop scanning this workflow until it syncs, then reselect the workflow before continuing.',
           severity: 'warning',
         });
         await warningFeedback();
@@ -94,10 +107,21 @@ export function useScanWorkflow() {
         }
       } catch (reason) {
         if (reason instanceof ApiError && reason.retriable) {
+          const replaySafe = Boolean(command.workflowSessionId) || command.workflow === 'ship';
+          if (!replaySafe) {
+            setResult({
+              title: barcode,
+              message: 'Server unavailable. Reconnect and rescan the task or document to start this workflow.',
+              severity: 'warning',
+            });
+            await warningFeedback();
+            return;
+          }
           await queue.enqueueScan(activeConnection.id, command);
+          setOfflinePending(true);
           setResult({
             title: barcode,
-            message: 'Server unavailable. Operation queued safely for retry.',
+            message: 'Server unavailable. Operation queued safely for retry. Pause this workflow until sync completes.',
             severity: 'warning',
           });
           await warningFeedback();
@@ -115,13 +139,14 @@ export function useScanWorkflow() {
     } finally {
       setProcessing(false);
     }
-  }, [activeConnection, processing, queue, workflow, workflowSessionId]);
+  }, [activeConnection, offlinePending, processing, queue, workflow, workflowSessionId]);
 
   return {
     workflow,
     setWorkflow,
     workflowSessionId,
     processing,
+    offlinePending,
     result,
     processScan,
   };
