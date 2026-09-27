@@ -317,6 +317,7 @@ Dashboard 只显示真实 Connector 数据。
 
 - `GET /mobile/v1/tasks?status=open`
 - `POST /mobile/v1/tasks/:id/complete`
+- `POST /mobile/v1/tasks/:id/review`
 
 Task 类型包括：
 
@@ -529,6 +530,7 @@ Scan Order / Task
 Scan Order / Tote
 → Scan Items
 → Verify Quantity
+→ Approve Pick Task when review is required
 → Package
 → Confirm Pack
 ```
@@ -549,7 +551,9 @@ Scan Order / Tote
 
 ```text
 Scan Shipment
+→ Verify outbound workflow is Ready to Ship
 → Verify Package
+→ Verify weighing when required
 → Tracking / Carrier
 → Confirm Ship
 ```
@@ -611,7 +615,7 @@ Scan Count Task
 → Supervisor Approval if required
 ```
 
-盘点不能把“没有扫到”自动当成零库存。零数量必须由操作员明确输入。
+盘点不能把“没有扫到”自动当成零库存。零数量必须由操作员明确输入。盘点进入 Review 后、主管批准前，操作员仍可修正实盘数量；批准后才正式过账差异。
 
 ---
 
@@ -666,16 +670,18 @@ Restock 流程必须支持：
 
 所有 mutation 在发送前生成 `operationId`。
 
-断网或可重试错误：
+断网或可重试错误时，只对**可安全重放**的操作入队：已由服务器建立 `workflowSessionId` 的进行中 Workflow，或明确的一步式可重放操作（V1 为 Ship）。启动新的多步骤 Workflow、Identify 等需要服务器返回状态的操作在离线时不入队，避免产生无法验证的本地状态。
 
 ```text
 Create operationId
+→ Confirm command is replay-safe
 → Save SQLite
-→ Show Saved Offline
+→ Lock/pause current scan workflow
 → Network Restored
-→ Retry
+→ Retry with same operationId
 → Success
 → Remove Queue Item
+→ Operator reselects workflow and resumes from server state
 ```
 
 不可重试错误或达到最大自动重试次数：
@@ -756,6 +762,7 @@ GET  /mobile/v1/dashboard
 
 GET  /mobile/v1/tasks
 POST /mobile/v1/tasks/:id/complete
+POST /mobile/v1/tasks/:id/review
 POST /mobile/v1/tasks/:id/exception
 POST /mobile/v1/tasks/:id/exception/resolve
 
