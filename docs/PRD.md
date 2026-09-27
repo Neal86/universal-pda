@@ -1129,37 +1129,45 @@ Route 文件只负责 Feature 组装。
 
 ## 39. 当前完成状态
 
-当前 `develop` 已具备：
+当前 `develop` 的代码层已具备：
 
-- Expo / React Native 基础
-- Android / iOS App Identity
-- Strict TypeScript
-- 模块化目录
-- Connector Core
-- NiceC / Odoo / SAP / Custom Connector Definition
-- Workflow Registry
-- Identify / Receive / Putaway / Pick / Pack / Ship / Count / Move / Return 定义
-- Camera Scanner
-- Keyboard Wedge Scanner
-- SecureStore Token
-- SQLite Schema
-- Multi Connection
-- Offline Queue
-- Retry Policy
-- Dashboard
-- Tasks
-- Inventory
-- Scan Feature
-- Capability Provider
-- Push Notification 基础
-- EAS Build Profile
-- Privacy / Architecture / Connector / Release Docs
+- Expo / React Native Android + iOS App Identity
+- Strict TypeScript 与模块化目录
+- Connector Core 与 Capability 驱动导航
+- NiceC Credential Login（密码只用于 Token Exchange，不落盘）
+- Multi Connection 与 Active Warehouse 切换
+- SecureStore Scoped Mobile Token
+- SQLite Connection / Warehouse Metadata / Offline Queue
+- Camera Scanner / Keyboard Wedge / Manual Scan
+- Identify / Receive / Putaway / Pick / Pack / Ship / Count / Move / Return
+- Pick / Move Source & Destination Location 验证
+- Lot / Serial 扫描处理
+- Count 显式数量修正（包括 0）与 Manager Review
+- Return Good / Defective 分类、库位上架与 Review
+- Task Exception Report / Resolve
+- Offline Retry + Needs Attention + Manual Retry / Discard
+- Dashboard / Tasks / Inventory
+- Push Token Registration 基础
+- EAS Build Profiles
+- Connector Protocol / Privacy / Architecture / Release 文档
+- GitHub Actions CI
+- NiceC 只读 Smoke Runner
 
-最近验证结果：
+配套 NiceC 后端 `Neal86/nicerp:develop` 已新增真实 `/mobile/v1` Gateway/BFF、移动设备注册、Warehouse Scope、审计接入、幂等复用和真实 Odoo WMS Workflow 调用。
 
-- TypeScript typecheck: PASS
-- ESLint: PASS
+最近代码验证结果：
+
+- Universal PDA `npm run check`: PASS
+- ESLint: PASS（0 warnings）
+- TypeScript strict typecheck: PASS
 - Unit Tests: 7 / 7 PASS
+- GitHub Actions CI: PASS
+- NiceC Gateway TypeScript check: PASS
+- NiceC Gateway full build: PASS
+- NiceC Gateway bundle verification: PASS
+- NiceC 新增 Python 文件语法检查: PASS
+
+尚未声称完成的是真实环境 / 发布环境验收：NiceC 部署升级、真实仓库数据 E2E、Android/iPhone/Industrial PDA 真机、EAS Signing、TestFlight / Play Internal Test。
 
 ---
 

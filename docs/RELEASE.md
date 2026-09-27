@@ -4,10 +4,12 @@
 
 A release candidate must pass:
 
-- TypeScript strict typecheck
-- ESLint
-- unit tests
-- Expo Doctor
+- `npm ci`
+- `npm run check` (ESLint + strict TypeScript + unit tests)
+- GitHub Actions CI
+- Expo Doctor in the EAS-ready environment
+
+Current `develop` passes `npm run check` and GitHub Actions CI. Expo Doctor remains a release-environment gate because the final EAS project link/signing context is not configured yet.
 
 ## EAS
 
@@ -35,6 +37,21 @@ Before the first cloud build, link this repository to the owner's Expo/EAS proje
 - final screenshots and listing assets
 - public privacy-policy URL
 - Data safety form
+
+## NiceC deployment smoke
+
+After the paired NiceC Gateway/Odoo module is deployed and upgraded, run the read-only smoke command with a warehouse test account:
+
+```bash
+PDA_BASE_URL=https://<nicec-gateway> \
+PDA_USERNAME=<warehouse-user> \
+PDA_PASSWORD=<password> \
+npm run smoke:nicec
+```
+
+If the account has multiple warehouses and no active warehouse, also set `PDA_WAREHOUSE_ID`. Set `PDA_BARCODE` only when you want the smoke run to exercise Identify.
+
+The smoke runner does not persist credentials. Full mutation workflows must still be verified with designated test orders/inventory before production rollout.
 
 ## Hardware acceptance
 

@@ -36,12 +36,22 @@ GitHub is the source of truth for code. Development code is not maintained throu
 ## Quality commands
 
 ```bash
-npm install
-npm run typecheck
-npm run lint
-npm test
-npx expo-doctor
+npm ci
+npm run check
 ```
+
+`npm run check` runs ESLint, strict TypeScript typecheck, and unit tests. The same gate runs in GitHub Actions on `develop` and `main`.
+
+For a deployed NiceC gateway, a read-only connector smoke check is available:
+
+```bash
+PDA_BASE_URL=https://<gateway> \
+PDA_USERNAME=<warehouse-user> \
+PDA_PASSWORD=<password> \
+npm run smoke:nicec
+```
+
+Run Expo Doctor again in the final EAS-linked release environment before the first signed build.
 
 ## Release foundation
 
@@ -52,9 +62,13 @@ npx expo-doctor
 - industrial PDA keyboard-wedge scanning
 - durable SQLite offline command queue
 - normalized connector contract
+- real NiceC credential exchange and warehouse switching
+- receive / putaway / pick / pack / ship / count / move / return workflows
+- offline retry + Needs Attention recovery
 - strict vendor isolation
 - Android/iOS production identifiers
 - EAS build profiles
+- GitHub Actions quality gate
 
 Product requirements live in `docs/PRD.md` and must stay synchronized with implementation changes.
 
