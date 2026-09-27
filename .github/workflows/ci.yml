@@ -32,3 +32,6 @@ jobs:
 
       - name: Quality gate
         run: npm run check
+
+      - name: Release configuration gate
+        run: npm run release:verify
