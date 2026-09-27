@@ -80,7 +80,7 @@ export function ReturnRestockPanel({ result, onCompleted }: Props) {
     goodQty + defectiveQty <= receivedQty;
 
   async function submitCount() {
-    if (!client || !countValid || busy) return;
+    if (!client || !actionId || !countValid || busy) return;
 
     setBusy(true);
     try {
@@ -101,7 +101,7 @@ export function ReturnRestockPanel({ result, onCompleted }: Props) {
   }
 
   async function completePutaway() {
-    if (!client || !destinationBarcode.trim() || busy) return;
+    if (!client || !actionId || !destinationBarcode.trim() || busy) return;
 
     setBusy(true);
     try {
