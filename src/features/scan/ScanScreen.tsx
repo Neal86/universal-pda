@@ -199,6 +199,7 @@ export function ScanScreen() {
       ) : null}
 
       <CountLineEditor
+        key={`${result?.data?.cycleCountId ?? 'none'}:${result?.data?.lineId ?? 'none'}:${result?.data?.countedQty ?? 'none'}`}
         result={result}
         onSubmitted={resetCurrentWorkflow}
       />
