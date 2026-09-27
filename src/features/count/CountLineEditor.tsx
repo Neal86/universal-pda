@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text } from 'react-native';
 import type { ScanResult } from '@/connectors/core/types';
 import { MobileConnectorClient } from '@/connectors/core/MobileConnectorClient';
@@ -28,16 +28,11 @@ export function CountLineEditor({ result, onSubmitted }: Props) {
   const scannedQty = numberFromData(result?.data, 'countedQty');
   const systemQty = numberFromData(result?.data, 'systemQty');
 
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(() =>
+    typeof scannedQty === 'number' ? String(scannedQty) : '',
+  );
   const [saving, setSaving] = useState(false);
   const [savedDifference, setSavedDifference] = useState<number>();
-
-  useEffect(() => {
-    if (typeof scannedQty === 'number') {
-      setValue(String(scannedQty));
-      setSavedDifference(undefined);
-    }
-  }, [countId, lineId, scannedQty]);
 
   const countedQty = useMemo(() => {
     const parsed = Number(value);

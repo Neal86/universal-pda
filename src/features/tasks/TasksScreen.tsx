@@ -140,6 +140,7 @@ export function TasksScreen() {
       </Screen>
 
       <TaskExceptionModal
+        key={exceptionTask?.id ?? 'none'}
         task={exceptionTask}
         submitting={exceptionTaskId === exceptionTask?.id}
         onClose={() => setExceptionTask(null)}

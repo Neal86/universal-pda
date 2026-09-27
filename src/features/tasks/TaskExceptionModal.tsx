@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -32,13 +32,6 @@ export function TaskExceptionModal({
 }: Props) {
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<(typeof severities)[number]>('medium');
-
-  useEffect(() => {
-    if (task) {
-      setDescription('');
-      setSeverity('medium');
-    }
-  }, [task]);
 
   if (!task) return null;
 
