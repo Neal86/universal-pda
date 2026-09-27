@@ -3,6 +3,7 @@ import { Alert, StyleSheet, Text } from 'react-native';
 import type { ScanResult } from '@/connectors/core/types';
 import { MobileConnectorClient } from '@/connectors/core/MobileConnectorClient';
 import { useSession } from '@/auth/SessionProvider';
+import { useCapabilities } from '@/features/capabilities/CapabilityProvider';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
@@ -12,6 +13,8 @@ type Props = {
   result: ScanResult | null;
   onSubmitted?(): void;
 };
+
+const MANAGER_ROLES = new Set(['SUPER_ADMIN', 'ADMIN', 'WAREHOUSE_MANAGER']);
 
 function numberFromData(
   data: Record<string, unknown> | undefined,
@@ -23,6 +26,7 @@ function numberFromData(
 
 export function CountLineEditor({ result, onSubmitted }: Props) {
   const { activeConnection } = useSession();
+  const { capabilities } = useCapabilities();
   const countId = numberFromData(result?.data, 'cycleCountId');
   const lineId = numberFromData(result?.data, 'lineId');
   const scannedQty = numberFromData(result?.data, 'countedQty');
@@ -32,12 +36,18 @@ export function CountLineEditor({ result, onSubmitted }: Props) {
     typeof scannedQty === 'number' ? String(scannedQty) : '',
   );
   const [saving, setSaving] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [savedDifference, setSavedDifference] = useState<number>();
+  const [submittedForReview, setSubmittedForReview] = useState(
+    Boolean(result?.workflowComplete),
+  );
 
   const countedQty = useMemo(() => {
     const parsed = Number(value);
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
   }, [value]);
+
+  const isManager = MANAGER_ROLES.has(String(capabilities?.userRole || ''));
 
   if (result?.kind !== 'count' || !countId || !lineId || !activeConnection) {
     return null;
@@ -64,9 +74,12 @@ export function CountLineEditor({ result, onSubmitted }: Props) {
         countedQty,
       );
       setSavedDifference(updated.differenceQty);
+      setSubmittedForReview(updated.submittedForReview);
       if (updated.submittedForReview) {
-        Alert.alert('Count submitted', 'All count lines are entered and awaiting manager review.');
-        onSubmitted?.();
+        Alert.alert(
+          'Count saved',
+          'All count lines are entered. The count is awaiting manager review.',
+        );
       }
     } catch (reason) {
       Alert.alert(
@@ -75,6 +88,24 @@ export function CountLineEditor({ result, onSubmitted }: Props) {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function approve() {
+    if (!activeConnection || !countId || approving) return;
+
+    setApproving(true);
+    try {
+      await new MobileConnectorClient(activeConnection).approveCount(countId);
+      Alert.alert('Count approved', 'Inventory count differences were approved and posted.');
+      onSubmitted?.();
+    } catch (reason) {
+      Alert.alert(
+        'Count not approved',
+        reason instanceof Error ? reason.message : 'Unable to approve this count.',
+      );
+    } finally {
+      setApproving(false);
     }
   }
 
@@ -102,8 +133,23 @@ export function CountLineEditor({ result, onSubmitted }: Props) {
         title="Save Count"
         onPress={() => void save()}
         loading={saving}
-        disabled={countedQty === undefined}
+        disabled={countedQty === undefined || approving}
       />
+
+      {submittedForReview ? (
+        isManager ? (
+          <Button
+            title="Approve Count"
+            onPress={() => void approve()}
+            loading={approving}
+            disabled={saving}
+          />
+        ) : (
+          <Text style={styles.review}>
+            Count complete · awaiting warehouse manager approval
+          </Text>
+        )
+      ) : null}
     </Card>
   );
 }
@@ -112,4 +158,5 @@ const styles = StyleSheet.create({
   meta: { color: colors.textMuted },
   match: { color: colors.success, fontWeight: '900' },
   difference: { color: colors.warning, fontWeight: '900' },
+  review: { color: colors.textMuted, fontWeight: '800' },
 });
