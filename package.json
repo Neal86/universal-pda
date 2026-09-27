@@ -12,7 +12,8 @@
     "test": "vitest run",
     "doctor": "expo-doctor",
     "check": "npm run lint && npm run typecheck && npm test",
-    "smoke:nicec": "node scripts/smoke-nicec.mjs"
+    "smoke:nicec": "node scripts/smoke-nicec.mjs",
+    "release:verify": "node scripts/release-verify.mjs"
   },
   "dependencies": {
     "expo": "~57.0.24",
