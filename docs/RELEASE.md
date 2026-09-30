@@ -14,8 +14,9 @@ The release preparation checks are `npm run check`, `npm run doctor`, and `npm r
 ## EAS
 
 `eas.json` contains development, preview, and production profiles.
+Android `versionCode` and iOS `buildNumber` are managed by EAS remotely; read their values from each build record rather than `app.json`.
 
-Before the first cloud build, log in to the owner's Expo account and link this repository to that account's Expo/EAS project. Add the resulting project ID to `expo.extra.eas.projectId` in `app.json`. Do not create the project under a personal or temporary account.
+This repository is linked to `@neal668s-team/universal-pda` through `expo.extra.eas.projectId` in `app.json`. Confirm that EAS CLI reports this project before starting a build.
 
 ## Store/account items required from the owner
 

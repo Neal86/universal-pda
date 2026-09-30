@@ -40,8 +40,9 @@ if (!expo.ios?.bundleIdentifier) {
 if (!expo.android?.package) {
   throw new Error('Missing Android package identifier.');
 }
-if (!Number.isInteger(expo.android?.versionCode) || expo.android.versionCode < 1) {
-  throw new Error('Android versionCode must be a positive integer.');
+const remoteVersioning = eas.cli?.appVersionSource === 'remote';
+if (!remoteVersioning && (!Number.isInteger(expo.android?.versionCode) || expo.android.versionCode < 1)) {
+  throw new Error('Android versionCode must be a positive integer when EAS versioning is local.');
 }
 
 for (const profile of ['development', 'preview', 'production']) {
@@ -69,7 +70,9 @@ for (const file of [
 console.log('Release configuration verification passed.');
 console.log(`App: ${expo.name} ${expo.version}`);
 console.log(`iOS: ${expo.ios.bundleIdentifier}`);
-console.log(`Android: ${expo.android.package} (versionCode ${expo.android.versionCode})`);
+console.log(
+  `Android: ${expo.android.package} (${remoteVersioning ? 'versionCode managed by EAS remotely' : `versionCode ${expo.android.versionCode}`})`,
+);
 
 const projectId =
   expo.extra?.eas?.projectId ||
@@ -85,5 +88,5 @@ if (!projectId) {
 }
 
 console.log(
-  'WAITING: Apple signing/App Store Connect and Google Play signing/submission credentials are external release requirements.',
+  'STORE GATES: Confirm Apple signing/App Store Connect and Google Play submission credentials before publishing.',
 );
