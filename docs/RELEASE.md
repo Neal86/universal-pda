@@ -9,13 +9,13 @@ A release candidate must pass:
 - GitHub Actions CI
 - Expo Doctor in the EAS-ready environment
 
-Current `develop` passes `npm run check` and GitHub Actions CI. Expo Doctor remains a release-environment gate because the final EAS project link/signing context is not configured yet.
+The release preparation checks are `npm run check`, `npm run doctor`, and `npm run release:verify`. The iOS and Android JavaScript bundles can be checked with `npx expo export --platform ios` and `npx expo export --platform android`. These checks do not replace signed native builds or physical-device acceptance.
 
 ## EAS
 
 `eas.json` contains development, preview, and production profiles.
 
-Before the first cloud build, link this repository to the owner's Expo/EAS project so the EAS project ID can be added to app configuration.
+Before the first cloud build, log in to the owner's Expo account and link this repository to that account's Expo/EAS project. Add the resulting project ID to `expo.extra.eas.projectId` in `app.json`. Do not create the project under a personal or temporary account.
 
 ## Store/account items required from the owner
 

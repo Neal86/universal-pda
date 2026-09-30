@@ -33,5 +33,8 @@ jobs:
       - name: Quality gate
         run: npm run check
 
+      - name: Expo Doctor
+        run: npm run doctor
+
       - name: Release configuration gate
         run: npm run release:verify
