@@ -2,6 +2,7 @@
   "expo": {
     "name": "Universal PDA",
     "slug": "universal-pda",
+    "owner": "neal668s-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "universalpda",
@@ -43,6 +44,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5c51938b-28a5-4f59-b764-fd0ac2cdaa9a"
+      }
     }
   }
 }
